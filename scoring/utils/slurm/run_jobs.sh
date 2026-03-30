@@ -91,6 +91,7 @@ DOCKER_CMD=(
   docker run
   -v /opt/data/:/data/
   -v "$HOME/experiment_runs:/experiment_runs"
+  -v "$HOME/algorithmic-efficiency/:/algorithmic-efficiency/"
   -v "$HOME/submissions_algorithms/:/algorithmic-efficiency/submissions_algorithms"
   -v "$HOME/algorithmic-efficiency/docker/scripts/startup.sh:/algorithmic-efficiency/docker/scripts/startup.sh"
   --gpus all

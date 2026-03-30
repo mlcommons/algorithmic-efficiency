@@ -6,6 +6,7 @@ from typing import Optional
 
 import jax
 import tensorflow as tf
+import datasets as hf_datasets
 
 from algoperf import data_utils
 
@@ -83,7 +84,8 @@ def get_lm_dataset(
   shuffle_seed = jax.random.randint(data_rng, (), -(2**31), 2**31 - 1)
 
   data_dir = os.path.join(data_dir, TFDS_SPLIT_NAME[split])
-  tokens_ds = tf.data.Dataset.load(data_dir)
+  ds = hf_datasets.load_from_disk(data_dir)
+  tokens_ds = ds.to_tf_dataset()
 
   # tokens
   tokens_ds = tokens_ds.flat_map(tf.data.Dataset.from_tensor_slices)
