@@ -39,6 +39,7 @@ IMAGE="europe-west4-docker.pkg.dev/mlcommons-algoperf/algoperf-docker-repo/algop
 CONFIG_FILE="$HOME/algorithmic-efficiency/config.json"
 LOGS_BUCKET="algoperf-runs"
 TASK_ID="${SLURM_ARRAY_TASK_ID:-0}"
+ADDITIONAL_REQUIREMENTS_PATH=""
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
@@ -61,6 +62,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --max_global_steps)
       MAX_GLOBAL_STEPS="$2"
+      shift 2
+      ;;
+    --additional_requirements_path)
+      ADDITIONAL_REQUIREMENTS_PATH="$2"
       shift 2
       ;;
     *)
@@ -113,6 +118,10 @@ DOCKER_CMD=(
   -r false
   --logs_bucket "$LOGS_BUCKET"
 )
+
+if [ -n "$ADDITIONAL_REQUIREMENTS_PATH" ]; then
+  DOCKER_CMD+=(--additional_requirements_path "$ADDITIONAL_REQUIREMENTS_PATH")
+fi
 
 if [ -n "$MAX_GLOBAL_STEPS" ]; then
   DOCKER_CMD+=(-m "$MAX_GLOBAL_STEPS")

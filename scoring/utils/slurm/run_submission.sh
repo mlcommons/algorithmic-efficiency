@@ -212,6 +212,11 @@ run_sbatch() {
     --logs_bucket "$LOGS_BUCKET"
   )
 
+  local req_file="$SUBMISSION_PATH/requirements.txt"
+  if [ -f "$req_file" ]; then
+    sbatch_cmd+=(--additional_requirements_path "$req_file")
+  fi
+
   if [ -n "$MAX_GLOBAL_STEPS" ]; then
     sbatch_cmd+=(--max_global_steps "$MAX_GLOBAL_STEPS")
   fi
