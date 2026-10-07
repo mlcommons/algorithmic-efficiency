@@ -1,12 +1,16 @@
 """
 Runs 10 steps of SGD for each workload and compares results.
-Run it as:
-  python3 test_traindiffs.py
+
+See ``docs/CONTRIBUTING.md`` for runtime requirements and commands.
 """
 
+import os
 import pickle
 import subprocess
-from subprocess import DEVNULL, STDOUT, run
+import sys
+import tempfile
+from pathlib import Path
+from subprocess import DEVNULL, STDOUT
 
 from absl import flags
 from absl.testing import absltest, parameterized
@@ -32,6 +36,65 @@ for w in WORKLOADS:
   named_parameters.append(dict(testcase_name=f'{w}', workload=w))
 
 
+def _run_reference_algorithm(
+  workload: str,
+  framework: str,
+  log_file: Path,
+) -> None:
+  if framework == 'jax':
+    launcher = [sys.executable]
+  elif framework == 'pytorch':
+    launcher = [
+      'torchrun',
+      '--standalone',
+      '--nnodes',
+      '1',
+      '--nproc_per_node',
+      '8',
+    ]
+  else:
+    raise ValueError(f'Unsupported framework: {framework}')
+
+  command = [
+    *launcher,
+    '-m',
+    'tests.reference_algorithm_tests',
+    f'--workload={workload}',
+    f'--framework={framework}',
+    f'--global_batch_size={GLOBAL_BATCH_SIZE}',
+    f'--log_file={log_file}',
+    f'--submission_path=tests/modeldiffs/vanilla_sgd_{framework}.py',
+    '--identical=True',
+    '--tuning_search_space=None',
+    f'--num_train_steps={NUM_TRAIN_STEPS}',
+  ]
+  env = os.environ.copy()
+  env['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
+  subprocess.run(
+    command,
+    env=env,
+    stdout=DEVNULL,
+    stderr=STDOUT,
+    check=True,
+  )
+
+
+def _collect_results(workload: str) -> tuple[dict, dict]:
+  with tempfile.TemporaryDirectory(prefix=f'traindiff-{workload}-') as temp_dir:
+    results_dir = Path(temp_dir)
+    jax_logs_path = results_dir / 'jax_log.pkl'
+    pytorch_logs_path = results_dir / 'pytorch_log.pkl'
+
+    _run_reference_algorithm(workload, 'jax', jax_logs_path)
+    _run_reference_algorithm(workload, 'pytorch', pytorch_logs_path)
+
+    with jax_logs_path.open('rb') as f:
+      jax_results = pickle.load(f)
+    with pytorch_logs_path.open('rb') as f:
+      pytorch_results = pickle.load(f)
+  return jax_results, pytorch_results
+
+
 class ModelDiffTest(parameterized.TestCase):
   @parameterized.named_parameters(*named_parameters)
   def test_workload(self, workload):
@@ -43,34 +106,7 @@ class ModelDiffTest(parameterized.TestCase):
     CUDA OOM errors resulting from the two frameworks competing with each other for GPU memory.
     """
     name = f'Testing {workload}'
-    jax_logs_path = '/tmp/jax_log.pkl'
-    pytorch_logs_path = '/tmp/pyt_log.pkl'
-    try:
-      run(
-        f'XLA_PYTHON_CLIENT_ALLOCATOR=platform python -m tests.reference_algorithm_tests --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs_path}'
-        f' --submission_path=tests/modeldiffs/vanilla_sgd_jax.py --identical=True --tuning_search_space=None --num_train_steps={NUM_TRAIN_STEPS}',
-        shell=True,
-        stdout=DEVNULL,
-        stderr=STDOUT,
-        check=True,
-      )
-    except subprocess.CalledProcessError as e:
-      print('Error:', e)
-    try:
-      run(
-        f'XLA_PYTHON_CLIENT_ALLOCATOR=platform torchrun --standalone --nnodes 1 --nproc_per_node 8 -m tests.reference_algorithm_tests --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pytorch_logs_path}'
-        f' --submission_path=tests/modeldiffs/vanilla_sgd_pytorch.py --identical=True --tuning_search_space=None --num_train_steps={NUM_TRAIN_STEPS}',
-        shell=True,
-        stdout=DEVNULL,
-        stderr=STDOUT,
-        check=True,
-      )
-    except subprocess.CalledProcessError as e:
-      print('Error:', e)
-    with open(jax_logs_path, 'rb') as f:
-      jax_results = pickle.load(f)
-    with open(pytorch_logs_path, 'rb') as f:
-      pytorch_results = pickle.load(f)
+    jax_results, pytorch_results = _collect_results(workload)
 
     # PRINT RESULTS
     eval_metric_key = next(

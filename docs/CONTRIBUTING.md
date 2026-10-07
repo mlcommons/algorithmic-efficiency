@@ -21,6 +21,7 @@
 -   [Testing](#testing)
     -   [Style Testing](#style-testing)
     -   [Unit and Integration Tests](#unit-and-integration-tests)
+    -   [Training Difference Tests](#training-difference-tests)
     -   [Regression Tests](#regression-tests)
     -   [Versioning](#versioning)
     -   [Release Process](#release-process)
@@ -291,6 +292,30 @@ We run unit tests and integration tests as part of the of github actions as
 well. You can also use `python tests/reference_algorithm_tests.py` to run a
 single model update and two model evals for each workload using the reference
 algorithm in `algorithms/target_setting_algorithms/`.
+
+### Training Difference Tests
+
+The training difference tests run ten SGD steps in JAX and PyTorch and compare
+the resulting evaluation metrics, gradient norms, and losses. Run them from the
+repository root in an environment with both framework dependencies, the
+workload datasets, and eight visible GPUs:
+
+```bash
+python -m tests.test_traindiffs
+```
+
+To run one workload while developing, pass its generated test name. For
+example:
+
+```bash
+python -m tests.test_traindiffs \
+  ModelDiffTest.test_workload_imagenet_resnet
+```
+
+Each test invocation writes JAX and PyTorch results into its own temporary
+directory and removes it afterward. A failed framework subprocess stops the
+test immediately with the original command failure instead of producing a
+secondary missing-results-file error.
 
 ### Regression Tests
 
