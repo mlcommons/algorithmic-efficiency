@@ -1,15 +1,12 @@
 """Training algorithm track submission functions for MNIST."""
 
-import functools
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 import optax
-from flax import jax_utils
-from jax import lax
 
-from algoperf import spec
+from algoperf import jax_sharding_utils, spec
 
 
 def get_batch_size(workload_name):
@@ -39,29 +36,18 @@ def init_optimizer_state(
     ),
     optax.scale(-hyperparameters.learning_rate),
   )
-  return jax_utils.replicate(opt_init_fn(params_zeros_like)), opt_update_fn
+  return opt_init_fn(params_zeros_like), opt_update_fn
 
 
-# We need to jax.pmap here instead of inside update_params because the latter
-# would recompile the function every step.
-@functools.partial(
-  jax.pmap,
-  axis_name='batch',
-  in_axes=(None, None, 0, 0, None, 0, 0, 0),
-  static_broadcasted_argnums=(0, 1),
-)
-def pmapped_update_params(
+def train_step(
   workload: spec.Workload,
   opt_update_fn,
   current_param_container: spec.ParameterContainer,
   model_state: spec.ModelAuxiliaryState,
-  hyperparameters: spec.Hyperparameters,
   batch: Dict[str, spec.Tensor],
   optimizer_state: spec.OptimizerState,
   rng: spec.RandomState,
 ) -> spec.UpdateReturn:
-  del hyperparameters
-
   def loss_fn(params):
     logits_batch, new_model_state = workload.model_fn(
       params=params,
@@ -77,7 +63,6 @@ def pmapped_update_params(
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   (_, new_model_state), grad = grad_fn(current_param_container)
-  grad = lax.pmean(grad, axis_name='batch')
   updates, new_optimizer_state = opt_update_fn(
     grad, optimizer_state, current_param_container
   )
@@ -105,18 +90,33 @@ def update_params(
   del train_state
   del eval_results
   del global_step
+  del hyperparameters
 
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   optimizer_state, opt_update_fn = optimizer_state
-  new_optimizer_state, updated_params, new_model_state = pmapped_update_params(
+
+  replicated = jax_sharding_utils.get_replicate_sharding()
+  sharded = jax_sharding_utils.get_batch_dim_sharding()
+  jitted_train_step = jax.jit(
+    train_step,
+    static_argnums=(0, 1),
+    donate_argnums=(2, 3, 5),
+    in_shardings=(
+      replicated,
+      replicated,
+      sharded,
+      replicated,
+      replicated,
+    ),
+    out_shardings=(replicated, replicated, replicated),
+  )
+  new_optimizer_state, updated_params, new_model_state = jitted_train_step(
     workload,
     opt_update_fn,
     current_param_container,
     model_state,
-    hyperparameters,
     batch,
     optimizer_state,
-    per_device_rngs,
+    rng,
   )
   return (new_optimizer_state, opt_update_fn), updated_params, new_model_state
 
