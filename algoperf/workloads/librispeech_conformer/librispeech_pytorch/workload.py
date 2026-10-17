@@ -104,7 +104,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     rng: spec.RandomState,
     update_batch_norm: bool,
     dropout_rate: float = models.DROPOUT_RATE,
-  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+  ) -> Tuple[Tuple[spec.Tensor, spec.Tensor], spec.ModelAuxiliaryState]:
     del model_state
     del rng
 

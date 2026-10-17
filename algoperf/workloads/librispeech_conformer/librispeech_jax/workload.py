@@ -106,7 +106,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     update_batch_norm: bool,
     use_running_average_bn: Optional[bool] = None,
     dropout_rate: Optional[float] = models.DROPOUT_RATE,
-  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+  ) -> Tuple[Tuple[spec.Tensor, spec.Tensor], spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     is_train_mode = mode == spec.ForwardPassMode.TRAIN
